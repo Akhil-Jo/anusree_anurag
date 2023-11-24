@@ -1,17 +1,11 @@
 (function(exports) {
     'use strict';
 
-    var // functions
-        extend,
+    var extend,
         createElements,
         createCountdownElt,
         simplyCountdown;
 
-    /**
-     * Function that merge user parameters with defaults one.
-     * @param out
-     * @returns {*|{}}
-     */
     extend = function(out) {
         var i,
             obj,
@@ -37,48 +31,40 @@
         return out;
     };
 
-    /**
-     * Function that create a countdown section
-     * @param countdown
-     * @param parameters
-     * @param typeClass
-     * @returns {{full: (*|Element), amount: (*|Element), word: (*|Element)}}
-     */
     createCountdownElt = function(countdown, parameters, typeClass) {
         var innerSectionTag,
             sectionTag,
             amountTag,
-            wordTag;
+            wordTag,
+            valueTag;
 
         sectionTag = document.createElement('div');
         amountTag = document.createElement('span');
         wordTag = document.createElement('span');
+        valueTag = document.createElement('span');
         innerSectionTag = document.createElement('div');
 
         innerSectionTag.appendChild(amountTag);
         innerSectionTag.appendChild(wordTag);
+        innerSectionTag.appendChild(valueTag);
         sectionTag.appendChild(innerSectionTag);
 
         sectionTag.classList.add(parameters.sectionClass);
         sectionTag.classList.add(typeClass);
         amountTag.classList.add(parameters.amountClass);
         wordTag.classList.add(parameters.wordClass);
+        valueTag.classList.add(parameters.valueClass);
 
         countdown.appendChild(sectionTag);
 
         return {
             full: sectionTag,
             amount: amountTag,
-            word: wordTag
+            word: wordTag,
+            value: valueTag
         };
     };
 
-    /**
-     * Function that create full countdown DOM elements calling createCountdownElt
-     * @param parameters
-     * @param countdown
-     * @returns {{days: (*|Element), hours: (*|Element), minutes: (*|Element), seconds: (*|Element)}}
-     */
     createElements = function(parameters, countdown) {
         var spanTag;
 
@@ -91,47 +77,59 @@
             };
         }
 
+        var container = document.createElement('div');
+        container.classList.add(parameters.inlineClass);
+
+        var digitContainer = document.createElement('div');
+        digitContainer.classList.add(parameters.inlineClass);
+        container.appendChild(digitContainer);
+
         spanTag = document.createElement('span');
-        spanTag.classList.add(parameters.inlineClass);
-        return spanTag;
+        spanTag.classList.add(parameters.wordClass);
+        container.appendChild(spanTag);
+
+        var valueTag = document.createElement('span');
+        container.appendChild(valueTag);
+
+        countdown.appendChild(container);
+
+        return {
+            container: container,
+            digit: spanTag,
+            text: digitContainer,
+            value: valueTag
+        };
     };
 
-    /**
-     * simplyCountdown, create and display the coundtown.
-     * @param elt
-     * @param args (parameters)
-     */
     simplyCountdown = function(elt, args) {
-
         var parameters = extend({
+            year: 2024,
+            month: 1,
+            day: 14,
+            hours: 12,
+            minutes: 0,
+            seconds: 0,
+            enableUtc: true,
+            refresh: 1000,
+            inline: false,
+            inlineClass: 'simply-countdown-inline',
+            sectionClass: 'simply-section',
+            amountClass: 'simply-amount',
+            wordClass: 'simply-word',
+            valueClass: 'simply-value',
+            zeroPad: false,
+            words: {
+                days: 'Days',
+                hours: 'Hours',
+                minutes: 'Minutes',
+                seconds: 'Seconds'
+            },
+            onEnd: function() {
+                console.log('Countdown ended!');
+            }
+        }, args);
 
-                year: 2024,
-                month: 1,
-                day: 14,
-                hours: 12,
-                minutes: 0,
-                seconds: 0,
-                words: {
-                    days: 'day',
-                    hours: 'hour',
-                    minutes: 'minute',
-                    seconds: 'second',
-                    pluralLetter: 's'
-                },
-                plural: true,
-                inline: false,
-                enableUtc: true,
-                onEnd: function() {
-                    return;
-                },
-                refresh: 1000,
-                inlineClass: 'simply-countdown-inline',
-                sectionClass: 'simply-section',
-                amountClass: 'simply-amount',
-                wordClass: 'simply-word',
-                zeroPad: false
-            }, args),
-            interval,
+        var interval,
             targetDate,
             targetTmpDate,
             now,
@@ -164,33 +162,25 @@
         } else {
             targetDate = targetTmpDate;
         }
-        console.log('Countdown has reached zero!');
+
         Array.prototype.forEach.call(cd, function(countdown) {
-            var fullCountDown = createElements(parameters, countdown),
-                refresh;
+            var fullCountDown = createElements(parameters, countdown);
 
-            refresh = function() {
-                var dayWord,
-                    hourWord,
-                    minuteWord,
-                    secondWord;
-
+            var refresh = function() {
                 now = new Date();
                 if (parameters.enableUtc) {
-                    nowUtc = new Date(now.getFullYear(), now.getMonth(), now.getDate(),
-                        now.getHours(), now.getMinutes(), now.getSeconds());
+                    nowUtc = new Date(now.getTime() + now.getTimezoneOffset() * 60000); // Adjust to UTC
                     secondsLeft = (targetDate - nowUtc.getTime()) / 1000;
-
                 } else {
                     secondsLeft = (targetDate - now.getTime()) / 1000;
                 }
 
                 if (secondsLeft > 0) {
                     days = parseInt(secondsLeft / 86400, 10);
-                    secondsLeft = secondsLeft % 86400;
+                    secondsLeft %= 86400;
 
                     hours = parseInt(secondsLeft / 3600, 10);
-                    secondsLeft = secondsLeft % 3600;
+                    secondsLeft %= 3600;
 
                     minutes = parseInt(secondsLeft / 60, 10);
                     seconds = parseInt(secondsLeft % 60, 10);
@@ -199,67 +189,48 @@
                     hours = 0;
                     minutes = 0;
                     seconds = 0;
-                    window.clearInterval(interval);
+                    window.cancelAnimationFrame(interval); // Stop the animation frame loop
                     parameters.onEnd();
                 }
 
-                if (parameters.plural) {
-                    dayWord = days > 1 ?
-                        parameters.words.days + parameters.words.pluralLetter :
-                        parameters.words.days;
-
-                    hourWord = hours > 1 ?
-                        parameters.words.hours + parameters.words.pluralLetter :
-                        parameters.words.hours;
-
-                    minuteWord = minutes > 1 ?
-                        parameters.words.minutes + parameters.words.pluralLetter :
-                        parameters.words.minutes;
-
-                    secondWord = seconds > 1 ?
-                        parameters.words.seconds + parameters.words.pluralLetter :
-                        parameters.words.seconds;
-
-                } else {
-                    dayWord = parameters.words.days;
-                    hourWord = parameters.words.hours;
-                    minuteWord = parameters.words.minutes;
-                    secondWord = parameters.words.seconds;
-                }
-
-                /* display an inline countdown into a span tag */
+                // Update the countdown display
                 if (parameters.inline) {
-                    countdown.innerHTML =
-                        days + ' ' + dayWord + ', ' +
-                        hours + ' ' + hourWord + ', ' +
-                        minutes + ' ' + minuteWord + ', ' +
-                        seconds + ' ' + secondWord + '.';
+                    // Updated display for inline mode
+                    fullCountDown.container.innerHTML =
+                        '<div>' + days + '<br><span>' + parameters.words.days + '</span></div>' +
+                        '<div>' + hours + '<br><span>' + parameters.words.hours + '</span></div>' +
+                        '<div>' + minutes + '<br><span>' + parameters.words.minutes + '</span></div>' +
+                        '<div>' + seconds + '<br><span>' + parameters.words.seconds + '</span></div>';
 
+                    // For inline display, update the content of the valueTag
+                    fullCountDown.container.style.display = 'flex';
+                    fullCountDown.value.textContent = days;
                 } else {
-                    fullCountDown.days.amount.textContent = (parameters.zeroPad && days.toString().length < 2 ? '0' : '') + days;
-                    fullCountDown.days.word.textContent = dayWord;
+                    // Existing code for non-inline mode
+                    fullCountDown.days.amount.textContent = (parameters.zeroPad && days < 10 ? '0' : '') + days;
+                    fullCountDown.hours.amount.textContent = (parameters.zeroPad && hours < 10 ? '0' : '') + hours;
+                    fullCountDown.minutes.amount.textContent = (parameters.zeroPad && minutes < 10 ? '0' : '') + minutes;
+                    fullCountDown.seconds.amount.textContent = (parameters.zeroPad && seconds < 10 ? '0' : '') + seconds;
 
-                    fullCountDown.hours.amount.textContent = (parameters.zeroPad && hours.toString().length < 2 ? '0' : '') + hours;
-                    fullCountDown.hours.word.textContent = hourWord;
-
-                    fullCountDown.minutes.amount.textContent = (parameters.zeroPad && minutes.toString().length < 2 ? '0' : '') + minutes;
-                    fullCountDown.minutes.word.textContent = minuteWord;
-
-                    fullCountDown.seconds.amount.textContent = (parameters.zeroPad && seconds.toString().length < 2 ? '0' : '') + seconds;
-                    fullCountDown.seconds.word.textContent = secondWord;
+                    // Update labels for non-inline mode
+                    fullCountDown.days.word.textContent = parameters.words.days;
+                    fullCountDown.hours.word.textContent = parameters.words.hours;
+                    fullCountDown.minutes.word.textContent = parameters.words.minutes;
+                    fullCountDown.seconds.word.textContent = parameters.words.seconds;
                 }
+
+                // Request the next animation frame
+                interval = window.requestAnimationFrame(refresh);
             };
 
-            // Refresh immediately to prevent a Flash of Unstyled Content
-            refresh();
-            interval = window.setInterval(refresh, parameters.refresh);
+            // Start the animation frame loop
+            interval = window.requestAnimationFrame(refresh);
         });
     };
 
     exports.simplyCountdown = simplyCountdown;
 }(window));
 
-/*global $, jQuery, simplyCountdown*/
 if (window.jQuery) {
     (function($, simplyCountdown) {
         'use strict';
@@ -271,5 +242,5 @@ if (window.jQuery) {
         $.fn.simplyCountdown = function(options) {
             return simplyCountdownify(this.selector, options);
         };
-    }(jQuery, simplyCountdown));
+    }(jQuery, window.simplyCountdown));
 }
