@@ -16,7 +16,27 @@ $(document).ready(function() {
 
     // Set a flag to indicate that the page has been refreshed
     localStorage.setItem('pageRefreshed', true);
+
+    // Function to scroll down slowly to the bottom of the page
+    function slowScrollToBottom() {
+        var currentPosition = window.scrollY;
+        var targetPosition = document.documentElement.scrollHeight;
+
+        var increment = 2; // Adjust the scrolling speed
+
+        if (currentPosition < targetPosition) {
+            // Scroll down
+            window.scrollTo(0, currentPosition + increment);
+        } else {
+            // Clear the interval when it reaches the bottom
+            clearInterval(scrollInterval);
+        }
+    }
+
+    // Set an interval for smooth scrolling after scrolling to the top
+    var scrollInterval = setInterval(slowScrollToBottom, 60); // Adjust the interval as needed
 });
+
 
 $(document).ready(function() {
 
